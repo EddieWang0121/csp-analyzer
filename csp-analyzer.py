@@ -3,26 +3,8 @@
 import sys
 import requests
 import urllib.parse
-from colored import fg, bg, attr
-
+import json
 import tldextract
-
-
-def banner():
-	print("""
-                                       _
-    ___ ___ _ __      __ _ _ __   __ _| |_   _ _______ _ __       _ __  _   _
-   / __/ __| '_ \    / _` | '_ \ / _` | | | | |_  / _ \ '__|     | '_ \| | | |
-  | (__\__ \ |_) |  | (_| | | | | (_| | | |_| |/ /  __/ |     _  | |_) | |_| |
-   \___|___/ .__/    \__,_|_| |_|\__,_|_|\__, /___\___|_|    (_) | .__/ \__, |
-           |_|                           |___/                   |_|    |___/
-
-                                by @gwendallecoguic
-
-""")
-	pass
-
-banner()
 
 
 # Sources:
@@ -62,28 +44,28 @@ t_help = {
     "require-sri-for": "Requires the use of SRI for scripts or styles on the page.",
     "upgrade-insecure-requests": "Instructs user agents to treat all of a site's insecure URLs (those served over HTTP) as though they have been replaced with secure URLs (those served over HTTPS). This directive is intended for web sites with large numbers of insecure legacy URLs that need to be rewritten.",
 
-    "*": {"t":"Wildcard, allows any URL except data: blob: filesystem: schemes.","c":"red"},
-    "'none'": {"t":"Prevents loading resources from any source.","c":"green"},
-    "'self'": {"t":"Allows loading resources from the same origin (same scheme, host and port).","c":"green"},
-    "data:": {"t":"Allows loading resources via the data scheme (eg Base64 encoded images).","c":"yellow"},
-    "blob:": {"t":"Allows loading resources via the blob scheme (eg Base64 encoded images).","c":"yellow"},
-    "domain.example.com": {"t":"Allows loading resources from the specified domain name.","c":"green"},
-    "*.example.com": {"t":"Allows loading resources from any subdomain under example.com.","c":"green"},
-    "https://cdn.com": {"t":"Allows loading resources only over HTTPS matching the given domain.","c":"green"},
-    "https:": {"t":"Allows loading resources only over HTTPS on any domain.","c":"green"},
-    "'unsafe-inline'": {"t":"Allows use of inline source elements such as style attribute, onclick, or script tag bodies (depends on the context of the source it is applied to) and javascript: URIs.","c":"red"},
-    "'unsafe-eval'": {"t":"Allows unsafe dynamic code evaluation such as JavaScript eval()","c":"red"},
-    "'nonce-'": {"t":"Allows script or style tag to execute if the nonce attribute value matches the header value. Note that 'unsafe-inline' is ignored if either a hash or nonce value is present in the source list.","c":"green"},
-    "'sha256-'": {"t":"Allow a specific script or style to execute if it matches the hash. Doesn't work for javascript: URIs. Note that 'unsafe-inline' is ignored if either a hash or nonce value is present in the source list.","c":"green"},
+    "*": {"t":"Wildcard, allows any URL except data: blob: filesystem: schemes.","warning_level":"5"},
+    "'none'": {"t":"Prevents loading resources from any source.","warning_level":"2"},
+    "'self'": {"t":"Allows loading resources from the same origin (same scheme, host and port).","warning_level":"2"},
+    "data:": {"t":"Allows loading resources via the data scheme (eg Base64 encoded images).","warning_level":"3"},
+    "blob:": {"t":"Allows loading resources via the blob scheme (eg Base64 encoded images).","warning_level":"3"},
+    "domain.example.com": {"t":"Allows loading resources from the specified domain name.","warning_level":"2"},
+    "*.example.com": {"t":"Allows loading resources from any subdomain under example.com.","warning_level":"2"},
+    "https://cdn.com": {"t":"Allows loading resources only over HTTPS matching the given domain.","warning_level":"2"},
+    "https:": {"t":"Allows loading resources only over HTTPS on any domain.","warning_level":"2"},
+    "'unsafe-inline'": {"t":"Allows use of inline source elements such as style attribute, onclick, or script tag bodies (depends on the context of the source it is applied to) and javascript: URIs.","warning_level":"5"},
+    "'unsafe-eval'": {"t":"Allows unsafe dynamic code evaluation such as JavaScript eval()","warning_level":"5"},
+    "'nonce-'": {"t":"Allows script or style tag to execute if the nonce attribute value matches the header value. Note that 'unsafe-inline' is ignored if either a hash or nonce value is present in the source list.","warning_level":"2"},
+    "'sha256-'": {"t":"Allow a specific script or style to execute if it matches the hash. Doesn't work for javascript: URIs. Note that 'unsafe-inline' is ignored if either a hash or nonce value is present in the source list.","warning_level":"2"},
 }
 
 t_warning_level = {
-    0: 'white',
-    1: 'cyan',
-    2: 'green',
-    3: 'yellow',
-    4: 'dark_orange',
-    5: 'red',
+    0: 'info',
+    1: 'info',
+    2: 'low',
+    3: 'low',
+    4: 'medium',
+    5: 'high',
 }
 
 
@@ -101,7 +83,6 @@ if len(sys.argv) > 3:
 
 url = sys.argv[1]
 if len(sys.argv) > 2:
-    # cookies = sys.argv[2]
     t_cookies = {}
     for c in sys.argv[2].split(';'):
         c = c.strip()
@@ -109,35 +90,25 @@ if len(sys.argv) > 2:
             i = c.index('=')
             k = c[0:i]
             v = c[i+1:]
-            # print(c.index('='))
-            # print(k)
-            # print(v)
             t_cookies[k] = v
 else:
     t_cookies = {}
-# print(t_cookies)
 
 if not url.startswith('http'):
     url = 'https://' + url
 
-# exit()
-print("Calling %s..." % url )
-# r = requests.get( url )
+# print("Calling %s..." % url )
 r = requests.get(url, cookies=t_cookies, allow_redirects=False, headers={'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:105.0) Gecko/20100101 Firefox/105.0'})
-# print(r.headers)
-# print(r.text)
+
 
 if 'Content-Security-Policy' not in r.headers:
     usage( 'Content-Security-Policy not found' )
 
-#print("%s" % r.headers['Content-Security-Policy'] )
 t_csp = r.headers['Content-Security-Policy'].split( ';' )
-#print(" %s" % t_csp )
-print("")
+# print("")
 
 t_parse_orig = urllib.parse.urlparse( url )
 t_tld_orig = tldextract.extract( t_parse_orig.netloc )
-# print( t_parse_orig )
 
 
 def getWarningLevel( t_tld_orig, item ):
@@ -151,7 +122,6 @@ def getWarningLevel( t_tld_orig, item ):
 
     tmp_parse = urllib.parse.urlparse( item )
     tmp_tld = tldextract.extract( tmp_parse.netloc )
-    # print(tmp_parse)
 
     if tmp_tld.subdomain == t_tld_orig.subdomain and tmp_tld.domain == t_tld_orig.domain and tmp_tld.suffix == t_tld_orig.suffix:
         # same subdomain and domain and tld
@@ -172,8 +142,14 @@ def getWarningLevel( t_tld_orig, item ):
 
     return w_level
 
+json_list={"result":[]}
 
 for csp in t_csp:
+    json_obj={"policy":"", 
+              "description":"", 
+              "warning_level":"", 
+              "orig_item":"", 
+              "additional":""}
     csp = csp.strip()
     if not len(csp):
         continue
@@ -182,13 +158,14 @@ for csp in t_csp:
     if policy:
         if not len(policy):
             continue
-        #sys.stdout.write( " " )
-        sys.stdout.write("%s%s%s%s" % (fg('cyan'),attr('reverse'),policy,attr(0)) )
-        # sys.stdout.write( colored( "%s" % policy, 'cyan', attrs=['reverse'] ) )
+        # sys.stdout.write("%s" % (policy) )
+        json_obj["policy"]=policy
+
         if policy in t_help:
-            sys.stdout.write(" %s[%s]%s" % (fg('light_gray'),t_help[policy],attr(0)))
-            # sys.stdout.write( colored( " [%s]" % t_help[policy], 'white' ) )
-        sys.stdout.write( "\n" )
+            # sys.stdout.write("[%s]" % (t_help[policy]))
+            json_obj["description"]=t_help[policy]
+
+        # sys.stdout.write( "\n" )
         for item in tmp:
             if not len(item):
                 continue
@@ -198,18 +175,22 @@ for csp in t_csp:
             elif item.startswith("'sha256-"):
                     item = "'sha256-'"
             if item in t_help:
-                color = t_help[item]['c']
+                warning_level = t_help[item]['warning_level']
             else:
                 w_level = getWarningLevel( t_tld_orig, item )
-                color = t_warning_level[w_level]
-            if color == 'white':
-                sys.stdout.write( "  + " )
-            else:
-                sys.stdout.write(" %s + %s" % (fg(color),attr(0)) )
-                # sys.stdout.write( colored( "  + ", color ) )
-            sys.stdout.write( "%s" % orig_item )
+                warning_level = t_warning_level[w_level]
+
+            # sys.stdout.write(" warning_level - %s:" % (warning_level) )
+            json_obj["warning_level"] = warning_level
+
+            # sys.stdout.write( "%s" % orig_item )
+            json_obj["orig_item"] = orig_item
+
             if item in t_help:
-                sys.stdout.write( " %s[%s]%s" % (fg(color),t_help[item]['t'],attr(0)) )
-                # sys.stdout.write( colored( " [%s]" % t_help[item]['t'], color ) )
-            sys.stdout.write( "\n" )
-    sys.stdout.write( "\n" )
+                # sys.stdout.write( "[%s]" % (t_help[item]['t']) )
+                json_obj["additional"] = t_help[item]['t']
+            # sys.stdout.write( "\n" )
+    # sys.stdout.write( "\n" )
+    json_list["result"].append(json_obj)
+
+print(json.dumps(json_list))
